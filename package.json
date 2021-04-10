@@ -1,0 +1,17 @@
+{
+  "name": "forgelight-dme",
+  "version": "0.1.0",
+  "description": "Library and tool for reading Forgelight DME model files",
+  "author": {
+    "name": "Jacob Seidelin",
+    "email": "jseidelin@nihilogic.dk",
+    "url": "http://github.com/jseidelin"
+  },
+  "license": "MIT",
+  "main": "dme.js",
+  "dependencies": {
+    "buffer-crc32": ">=0.2.1",
+    "hash-jenkins": "^1.0.1",
+    "xml2js": "^0.4.23"
+  }
+}

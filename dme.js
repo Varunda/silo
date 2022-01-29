@@ -1,6 +1,7 @@
-const Materials = require("./materials_3");
 const MaterialParameters = require("./materialparams").MaterialParameters;
 const Jenkins = require("hash-jenkins");
+
+let includeMaterials = false;
 
 const D3DXPARAMETER_TYPE = {
     D3DXPT_VOID:              0,
@@ -165,6 +166,8 @@ function parseMaterial(material, data) {
     material.definition = data.readUInt32LE(offset);
     offset += 4;
 
+    const Materials = require("./materials_3");
+    includeMaterials = true;
     if (Materials.MaterialDefinitions[material.definition]) {
         const matdef = Materials.MaterialDefinitions[material.definition];
         material.name = matdef.name;
@@ -328,13 +331,16 @@ function readDME(data) {
 
     dmatData = data.slice(offset, offset + dmatLength);
     dmod.dmat = readDMAT(dmatData);
-    console.log("dmat", dmod.dmat);
+    //console.log("dmat", dmod.dmat);
 
     offset += dmatLength;
 
     if (dmod.dmat.materials.length == 0) {
         throw "No materials in DME file";
     }
+
+    const Materials = require("./materials_3");
+    includeMaterials = true;
 
     const material = dmod.dmat.materials[0];
     const matdef = Materials.MaterialDefinitions[material.definition];
@@ -368,10 +374,10 @@ function readDME(data) {
         boneTransformCount, numVertexStreams,
         indexFlags, indexSize, numIndices, numVertices;
 
-    console.log(`numMeshes: ${numMeshes}`);
+    //console.log(`numMeshes: ${numMeshes}`);
 
     for (let i = 0; i < numMeshes; i++) {
-        console.log(`Reading mesh ${i}`);
+        //console.log(`Reading mesh ${i}`);
         const mesh = {};
 
         drawCallOffset = data.readUInt32LE(offset);
@@ -385,6 +391,7 @@ function readDME(data) {
 
         offset += 32;
 
+/*
         console.log("\tdrawCallOffset", drawCallOffset);
         console.log("\tdrawCallCount", drawCallCount);
         console.log("\tboneTransformCount", boneTransformCount);
@@ -393,6 +400,7 @@ function readDME(data) {
         console.log("\tindexFlags", indexFlags, indexFlags.toString(16));
         console.log("\tnumIndices", numIndices, numIndices.toString(16));
         console.log("\tnumVertices", numVertices, numVertices.toString(16));
+        */
 
         var vertices = [],
             uvs = [[]],
@@ -414,10 +422,12 @@ function readDME(data) {
                 originalOffset: offset
             };
             offset += stride * numVertices;
+            /*
             console.log(`\tvertex stream: ${j},`
                 + ` stride: ${vertexStreams[j].stride},`
                 + ` data: ${vertexStreams[j].data.length},`
                 + ` offset: ${vertexStreams[j].originalOffset}`);
+            */
         }
 
         for (var j = 0; j < numVertices; j++) {
@@ -478,7 +488,7 @@ function readDME(data) {
         }
 
         for (let k = 0; k < numVertexStreams; k++) {
-            console.log(`vertexStream ${k}, offset: ${vertexStreams[k].offset}`);
+            //console.log(`vertexStream ${k}, offset: ${vertexStreams[k].offset}`);
         }
 
         // calculate normals if we don't have them but do have binormals and tangent
@@ -533,7 +543,7 @@ function readDME(data) {
             const boneMapEntryCount = data.readUInt32LE(offset);
             offset += 4;
             mesh.boneMapEntries = [];
-            console.log(`boneMapEntryCount: ${boneMapEntryCount}/${boneMapEntryCount.toString(16)}`);
+            //console.log(`boneMapEntryCount: ${boneMapEntryCount}/${boneMapEntryCount.toString(16)}`);
             for (let j = 0; j < boneMapEntryCount; j++) {
                 const boneMapEntry = {};
                 boneMapEntry.boneIndex = data.readUInt16LE(offset);
@@ -545,7 +555,7 @@ function readDME(data) {
 
             const boneCount = data.readUInt32LE(offset);
             offset += 4;
-            console.log(`boneCount: ${boneCount}/${boneCount.toString(16)}`);
+            //console.log(`boneCount: ${boneCount}/${boneCount.toString(16)}`);
 
             mesh.bones = [];
             for (let j = 0; j < boneCount; j++) {
@@ -609,15 +619,17 @@ function readDME(data) {
         dmod.meshes.push(mesh);
     }
 
-    console.log(offset);
+    //console.log(offset);
 
     return dmod;
 }
 
 exports.write = writeDME;
 exports.read = readDME;
-exports.Materials = Materials;
-exports.InputLayouts = Materials.InputLayouts;
-exports.MaterialDefinitions = Materials.MaterialDefinitions;
-exports.MaterialParameters = MaterialParameters;
+if (includeMaterials == true) {
+    exports.Materials = Materials;
+    exports.InputLayouts = Materials.InputLayouts;
+    exports.MaterialDefinitions = Materials.MaterialDefinitions;
+    exports.MaterialParameters = MaterialParameters;
+}
 

@@ -1,0 +1,6 @@
+node_modules/jenkins-hash
+node_modules/sax
+node_modules/xml2js
+node_modules/xmlbuilder
+node_modules/commander
+assets/

@@ -6,13 +6,50 @@ var DME = require("./dme.js"),
     fs = require("fs"),
     path = require("path");
 
+const { program } = require("commander");
+const texture = require("./texture.js");
+
+program
+    .name("dme-tool")
+    .description("turn .dme files into .obj files")
+    .requiredOption("-i, --input <input file>", "file input")
+    .requiredOption("-o, --output <output file/directory>", "where the output will be placed")
+    .option("-m, --matdef <materials json>", "What file is used for the material definitions")
+    .option("-t, --texturedir <folder>", "What directory has all the textures")
+    .option("-v, --verbose", "Enable more output")
+    ;
+
+program
+    .command("info")
+    .description("Display basic info about the DME");
+
+program.command("obj").description("Convert a .dme file into a .obj file");
+program.command("mat").description("Export the materials of a .dme file");
+program.command("both").description("Performed both the obj and mat command on the input .dme file");
+program.command("json").description("Export a .dme file into a .JSON file");
+program.command("matdef").description("Turn the input file into the materials definition json file");
+
+program.parse();
+
+/*
 function usage() {
     console.log("Usage: ./dmetool.js <mode> <inPath> [<outPath>]");
     console.log("Modes: info     Display basic info about the DME");
     console.log("       obj      Export model to OBJ");
+    console.log("       mat      Export the textures/materials of a .dme file");
+    console.log("       both     Export both the model to OBJ, and the materials in the .dme file");
     console.log("       json     Export model to JSON");
     console.log("       matdef   Read materials_3.xml and export definitions to JSON");
 }
+*/
+
+if (program.opts().verbose) {
+    console.log("Options passed:");
+    console.log(program.opts());
+}
+//console.log(program);
+
+const assetPath = "D:\\Planetside2\\Resources\\Live-2021-04-28\\unpacked";
 
 function toJSON(dme) {
     var model = {
@@ -68,7 +105,7 @@ function toOBJ(dme) {
     var obj = [];
     console.log(`meshes in dme: ${dme.meshes.length}`);
     for (let i = 0; i < dme.meshes.length; i++) {
-        obj.push("g Mesh " + i);
+        obj.push("\ng Mesh " + i);
         const mesh = dme.meshes[i];
         for (let j = 0, l = mesh.vertices.length; j < l; j++) {
             const vertex = mesh.vertices[j];
@@ -116,19 +153,16 @@ function toOBJ(dme) {
                     v2 + "/" + v2
             );
             */
-            obj.push(
-                "f " + 
-                    v1 + "/" + v1 + " " + 
-                    v0 + "/" + v0 + " " + 
-                    v2 + "/" + v2
-            );
+
+            //obj.push(`f ${v1}/${v1} ${v0}/${v0} ${v2}/${v2}`);
+            obj.push("f " + v1 + "/" + v1 + " " + v0 + "/" + v0 + " " + v2 + "/" + v2);
         }
     }
     return obj.join("\n");
 }
 
-var mode = process.argv[2],
-    inPath = process.argv[3];
+const mode = process.argv[2];
+const inPath = program.opts().input;
 
 if (inPath) {
     if (!fs.existsSync(inPath)) {
@@ -137,32 +171,25 @@ if (inPath) {
 
     switch (mode) {
         case "obj":
-            console.log("Reading DME data from " + inPath);
-            var data = fs.readFileSync(inPath),
-                dme = DME.read(data),
-                outPath = process.argv[4],
-                obj = [];
-
-            if (!outPath) {
-                outPath = "./";
-            }
-            if (!fs.existsSync(outPath)) {
-                throw `outPath ${outPath} does not exist`;
-            }
-
-            var obj = toOBJ(dme);
-
-            var objPath = path.join(outPath, path.basename(inPath, ".dme") + ".obj");
-            console.log("Writing OBJ data to " + objPath);
-            fs.writeFileSync(objPath, obj);
+            handleObj();
             break;
 
-        case "json":
+        case "mat": {
+            handleMat();
+            break;
+        }
+
+        case "both": {
+            handleObj();
+            handleMat();
+            break;
+        }
+
+        case "json": {
             console.log("Reading DME data from " + inPath);
-            var data = fs.readFileSync(inPath),
+            const data = fs.readFileSync(inPath),
                 dme = DME.read(data),
-                outPath = process.argv[4],
-                obj = [];
+                outPath = process.argv[4];
 
             if (!outPath) {
                 outPath = "./";
@@ -171,16 +198,17 @@ if (inPath) {
                 throw "outPath does not exist";
             }
 
-            var obj = toJSON(dme);
+            const obj = toJSON(dme);
+            const objPath = path.join(outPath, path.basename(inPath, ".dme") + ".json");
 
-            var objPath = path.join(outPath, path.basename(inPath, ".dme") + ".json");
             console.log("Writing JSON data to " + objPath);
             fs.writeFileSync(objPath, JSON.stringify(obj, null, 4));
             break;
+        }
 
-        case "info":
+        case "info": {
             console.log("Reading DME data from " + inPath);
-            var data = fs.readFileSync(inPath),
+            const data = fs.readFileSync(inPath),
                 dme = DME.read(data);
 
             for (var i=0;i<dme.meshes.length;i++) {
@@ -199,14 +227,15 @@ if (inPath) {
             //console.log(JSON.stringify(dme, null, 2));
 
             break;
+        }
 
-        case "matdef":
+        case "matdef": {
             console.log("Reading material definitions from " + inPath);
-            var data = fs.readFileSync(inPath),
-                outPath = process.argv[4];
+            const data = fs.readFileSync(inPath);
+              let outPath = process.argv[4];
 
             if (!outPath) {
-                outPath = path.basename(inPath, ".xml") + "js";
+                outPath = path.basename(inPath, ".xml") + ".js";
             }
 
             xml2js.parseString(data.toString("utf-8"), function(err, result) {
@@ -276,6 +305,7 @@ if (inPath) {
                 ].join("\n"));
             });
             break;
+        }
 
         default:
             usage();
@@ -283,3 +313,55 @@ if (inPath) {
 } else {
     usage();
 }
+
+function handleObj() {
+    console.log("Reading DME data from " + inPath);
+    const data = fs.readFileSync(inPath);
+    const dme = DME.read(data);
+    let outPath = getOutputPath(inPath);
+
+    const obj = toOBJ(dme);
+    const objPath = path.join(outPath, path.basename(inPath, ".dme") + ".obj");
+
+    console.log("Writing OBJ data to " + objPath);
+    fs.writeFileSync(objPath, obj);
+}
+
+function handleMat() {
+    console.log(`Reading DME from ${inPath}`);
+    const data = fs.readFileSync(inPath);
+    const dme = DME.read(data);
+    let outPath = getOutputPath(inPath);
+
+    const textures = dme.dmat.textures;//.filter(iter => iter.indexOf("_C.dds") > -1);
+
+    for (const tex of textures) {
+        const texx = texture.getAssetPath(tex);
+        if (texx != null) {
+            console.log(texx);
+            fs.copyFileSync(texx, outPath + "/" + tex);
+        }
+    }
+}
+
+function getOutputPath(inPath) {
+    if (!inPath) {
+        throw `Missing inPath`;
+    }
+
+    let outPath = program.opts().output;
+
+    if (!outPath) {
+        outPath = `./${path.basename(inPath, ".dme")}`;
+        if (!fs.existsSync(outPath)) {
+            fs.mkdirSync(outPath);
+        }
+    }
+
+    if (!fs.existsSync(outPath)) {
+        throw `outPath ${outPath} does not exist`;
+    }
+
+    return outPath;
+}
+
